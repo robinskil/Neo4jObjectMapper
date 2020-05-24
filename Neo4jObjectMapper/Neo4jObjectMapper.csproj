@@ -6,7 +6,7 @@
     <Version>1.0.0</Version>
     <Authors>Robin Kooyman</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Description>This is a small package which wraps the Neo4j official driver in an Object Mapper. For information on how to use it, go to the Project URL where you can find the wiki. This is the first release of this package. It's an open source project so feedback and improvements are always welcome. If there are any issues please contact through github.</Description>
+    <Description>This is a small package which wraps the Neo4j official driver in an Object Mapper. For information on how to use it, go to https://github.com/robinskil/Neo4jObjectMapper/wiki . This is the first release of this package. It's an open source project so feedback and improvements are always welcome. If there are any issues please contact through github.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes>Initial 1.0.0 release</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/robinskil/Neo4jObjectMapper</PackageProjectUrl>
