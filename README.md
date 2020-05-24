@@ -17,14 +17,14 @@ public class Country
 The mapper will map all value types to the corresponding properties of the model. Property names are treated case-insensitive.
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
-var context = new NeoContext(Driver);
+INeoContext context = new NeoContext(Driver);
 Country result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:'Russia'}) return n");
 ```
 
 ### Querying with parameters
 Parameters have to be prefixed with a $ inside the cypher query.
 ```cs
-var context = new NeoContext(Driver);
+INeoContext context = new NeoContext(Driver);
 var parameters = new Dictionary<string, object>();
 parameters.Add("Country", "Russia");
 var result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:$Country}) return n",parameters);
