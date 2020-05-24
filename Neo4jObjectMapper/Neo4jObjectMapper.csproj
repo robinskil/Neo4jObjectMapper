@@ -9,7 +9,7 @@
     <Description>This is a small package which wraps the Neo4j official driver in an Object Mapper. For information on how to use it, go to the Project URL where you can find the wiki. This is the first release of this package. It's an open source project so feedback and improvements are always welcome. If there are any issues please contact through github.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes>Initial 1.0.0 release</PackageReleaseNotes>
-    <PackageProjectUrl>https://github.com/robinskil/NeoObjectMapper</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/robinskil/Neo4jObjectMapper</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageIcon>logo.png</PackageIcon>
     <Copyright>Copyright © 2020</Copyright>
