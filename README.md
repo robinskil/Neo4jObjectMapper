@@ -4,7 +4,7 @@ Welcome to the wiki for the Neo4j Object Mapper library. This an object mapper d
 Using this library does require the developer to have some knowledge about Cypher.
 
 ## Query a single node
-
+### Example Model
 ```cs
 public class Country
 {
