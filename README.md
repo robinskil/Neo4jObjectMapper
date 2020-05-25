@@ -40,6 +40,12 @@ parameters.Add("p2", personGuid.ToString());
 Person resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name: $p1 , Id: $p2 }) RETURN p",parameters);
 ```
 
+### Querying multiple nodes
+```cs
+IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
+INeoContext context = new NeoContext(Driver);
+IEnumerable<Person> personsResult = await context.QueryMultiple<Person>("MATCH (p:Person) return p");
+```
 
 ### Inserting a node
 ```cs
