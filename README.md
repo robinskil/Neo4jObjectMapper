@@ -15,7 +15,7 @@ public class Person
     public DateTime DateOfBirth { get; set; }
     public IList<Owns> Owns { get; set; }
 }
-
+//In neo4j this will be our relation between person and house. So a person will own a house.
 public class Owns
 {
     public DateTime OwnedFrom { get; set; }
