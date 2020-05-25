@@ -97,3 +97,31 @@ Person person = new Person()
 INeoContext context = new NeoContext(Driver);
 IResultSummary resultExecuting = await context.InsertNode<Person>(person);
 ```
+
+### Inserting a new node with a relation to another new node
+```cs
+IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
+var person = new Person()
+{
+    Age = 50,
+    DateOfBirth = DateTime.Now.AddYears(-50),
+    Id = Guid.NewGuid(),
+    Name = "neo",
+    Salary = 5400.77,
+    Owns = new List<Owns>()
+    {
+        new Owns()
+        {
+            OwnedFrom = DateTime.Now.AddYears(-2),
+            OwnedTill = DateTime.Now.AddYears(-1),
+            House = new House()
+            {
+                Address = "test address",
+                Age = 150
+            }
+        }
+    }
+};
+INeoContext context = new NeoContext(Driver);
+IResultSummary resultExecuting = await context.InsertNodeWithRelation<Person, Owns, House>(person, person.Owns.First(), person.Owns.First().House);
+```
