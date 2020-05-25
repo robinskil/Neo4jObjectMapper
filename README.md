@@ -46,6 +46,20 @@ IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic(
 INeoContext context = new NeoContext(Driver);
 IEnumerable<Person> personsResult = await context.QueryMultiple<Person>("MATCH (p:Person) return p");
 ```
+### Query multiple different nodes and map them
+The mapping function is very simmiliar to how it's used in Dapper.
+```cs
+IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
+INeoContext context = new NeoContext(Driver);
+Person person = await context.QueryDefaultIncludeable<Person, Owns, House>("MATCH (p:Person { Name: 'neo' })-[o:Owns]->(h:House) return p,o,h",
+    (person, owns, house) =>
+    {
+        person.Owns = new List<Owns>() { owns };
+        owns.House = house;
+        return person;
+    }
+);
+```
 
 ### Inserting a node
 ```cs
