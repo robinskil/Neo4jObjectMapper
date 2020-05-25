@@ -110,8 +110,8 @@ Owns own = new Owns()
 };
 INeoContext context = new NeoContext(Driver);
 IResultSummary resultSummary = await context.InsertRelation<Owns>(
-    "MATCH (n:Country { CountryID: '555' }) " +
-    "MATCH (c:City { CityId: '5555' })", "c", "n",
+    "MATCH (p:Person { Name : 'neo' }) " +
+    "MATCH (h:House { Address: 'test address' })", "p", "h",
     own
 );
 ```
