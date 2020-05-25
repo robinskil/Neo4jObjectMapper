@@ -4,7 +4,7 @@ Welcome to the wiki for the Neo4j Object Mapper library. This an object mapper b
 Using this library does require the developer to have some knowledge about Cypher.
 
 ## Query a single node
-### Example Model
+### Example Models
 ```cs
 public class Person
 {
@@ -14,6 +14,19 @@ public class Person
     public double Salary { get; set; }
     public DateTime DateOfBirth { get; set; }
     public IList<Owns> Owns { get; set; }
+}
+
+public class Owns
+{
+    public DateTime OwnedFrom { get; set; }
+    public DateTime OwnedTill { get; set; }
+    public House House { get; set; }
+}
+
+public class House
+{
+    public string Address { get; set; }
+    public int Age { get; set; }
 }
 ```
 The mapper will map all value types to the corresponding properties of the model. Property names are treated case-insensitive.
