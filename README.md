@@ -40,6 +40,7 @@ Person person = await context.QueryDefault<Person>("MATCH (p:Person) RETURN p");
 
 ### Querying a single node with parameters
 Parameters have to be prefixed with a $ inside the cypher query.
+All of the Query methods have support for parameterized queries.
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
 INeoContext context = new NeoContext(Driver);
@@ -55,7 +56,6 @@ Person resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name
 
 ### Query a single node and his relations with other nodes
 The mapping function is very similar to how it's used in Dapper.
-All Query methods support parameterized queries.
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
 INeoContext context = new NeoContext(Driver);
