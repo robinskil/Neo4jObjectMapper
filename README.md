@@ -44,7 +44,7 @@ Person resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name
 ### Inserting a node
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
-var person = new Person()
+Person person = new Person()
 {
     Age = 50,
     DateOfBirth = DateTime.Now.AddYears(-50),
@@ -52,6 +52,6 @@ var person = new Person()
     Name = "neo",
     Salary = 5400.77,
 };
-var context = new NeoContext(Driver);
-var resultExecuting = await context.InsertNode<Person>(person);
+INeoContext context = new NeoContext(Driver);
+IResultSummary resultExecuting = await context.InsertNode<Person>(person);
 ```
