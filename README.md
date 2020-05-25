@@ -82,7 +82,7 @@ INeoContext context = new NeoContext(Driver);
 IEnumerable<Person> personsResult = await context.QueryMultiple<Person>("MATCH (p:Person) return p");
 ```
 
-
+## Inserting nodes and relations
 ### Inserting a node
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
@@ -143,3 +143,5 @@ var person = new Person()
 INeoContext context = new NeoContext(Driver);
 IResultSummary resultExecuting = await context.InsertNodeWithRelation<Person, Owns, House>(person, person.Owns.First(), person.Owns.First().House);
 ```
+
+## Transactions
