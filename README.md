@@ -98,6 +98,24 @@ INeoContext context = new NeoContext(Driver);
 IResultSummary resultExecuting = await context.InsertNode<Person>(person);
 ```
 
+
+### Inserting a relation between existing nodes
+Relations without properties are also supported. Simply create a class without properties. The class name will become the relation type.
+```cs
+IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
+Owns own = new Owns()
+{
+    OwnedFrom = DateTime.Now.AddYears(-2),
+    OwnedTill = DateTime.Now.AddYears(-1),
+}
+INeoContext context = new NeoContext(Driver);
+IResultSummary resultSummary = await context.InsertRelation<Owns>(
+    "MATCH (n:Country { CountryID: '555' }) " +
+    "MATCH (c:City { CityId: '5555' })", "c", "n",
+    own
+);
+```
+
 ### Inserting a new node with a relation to another new node
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
