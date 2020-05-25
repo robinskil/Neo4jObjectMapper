@@ -107,7 +107,7 @@ Owns own = new Owns()
 {
     OwnedFrom = DateTime.Now.AddYears(-2),
     OwnedTill = DateTime.Now.AddYears(-1),
-}
+};
 INeoContext context = new NeoContext(Driver);
 IResultSummary resultSummary = await context.InsertRelation<Owns>(
     "MATCH (n:Country { CountryID: '555' }) " +
