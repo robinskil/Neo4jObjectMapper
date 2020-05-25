@@ -54,7 +54,7 @@ Person resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name
 ```
 
 ### Query a single node and his relations with other nodes
-The mapping function is very simmiliar to how it's used in Dapper.
+The mapping function is very similar to how it's used in Dapper.
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
 INeoContext context = new NeoContext(Driver);
