@@ -6,11 +6,14 @@ Using this library does require the developer to have some knowledge about Cyphe
 ## Query a single node
 ### Example Model
 ```cs
-public class Country
+public class Person
 {
-    public string CountryID { get; set; }
-    public string CountryName { get; set; }
-    public ICollection<City> Cities { get; set; }
+    public Guid Id { get; set; }
+    public int Age { get; set; }
+    public string Name { get; set; }
+    public double Salary { get; set; }
+    public DateTime DateOfBirth { get; set; }
+    public IList<Owns> Owns { get; set; }
 }
 ```
 The mapper will map all value types to the corresponding properties of the model. Property names are treated case-insensitive.
@@ -18,14 +21,37 @@ The mapper will map all value types to the corresponding properties of the model
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
 INeoContext context = new NeoContext(Driver);
-Country result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:'Russia'}) return n");
+//Query default will return the first record it gets from the neo4j database.
+Person person = await context.QueryDefault<Person>("MATCH (p:Person) RETURN p");
 ```
 
 ### Querying a single node with parameters
 Parameters have to be prefixed with a $ inside the cypher query.
 ```cs
+IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
 INeoContext context = new NeoContext(Driver);
+
+Guid personGuid = Guid.NewGuid();
 var parameters = new Dictionary<string, object>();
-parameters.Add("Country", "Russia");
-var result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:$Country}) return n",parameters);
+parameters.Add("p1", "neo");
+//As guids aren't supported by neo4j you will have to stringify it. 
+//However, models can have guid properties as the library converts the string to a guid
+parameters.Add("p2", personGuid.ToString());
+Person resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name: $p1 , Id: $p2 }) RETURN p",parameters);
+```
+
+
+### Inserting a node
+```cs
+IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
+var person = new Person()
+{
+    Age = 50,
+    DateOfBirth = DateTime.Now.AddYears(-50),
+    Id = Guid.NewGuid(),
+    Name = "neo",
+    Salary = 5400.77,
+};
+var context = new NeoContext(Driver);
+var resultExecuting = await context.InsertNode<Person>(person);
 ```
