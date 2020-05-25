@@ -15,8 +15,8 @@ namespace NeoObjectMapperTests
                 CountryID = "186",
                 CountryName = "Russia"
             };
-            var context = new NeoContext(Driver);
-            var result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:'Russia'}) return n");
+            INeoContext context = new NeoContext(Driver);
+            Country result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:'Russia'}) return n");
             Assert.NotNull(result);
             Assert.True(IsEqual(result, expected));
         }

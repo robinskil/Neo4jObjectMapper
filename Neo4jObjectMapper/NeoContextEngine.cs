@@ -9,78 +9,38 @@ namespace Neo4jObjectMapper
 {
     public class NeoContextEngine
     {
-        private readonly Dictionary<Type, Dictionary<string, MethodInfo>> cachedSettersForType;
-        private readonly Dictionary<Type, Dictionary<string, MethodInfo>> cachedGettersForType;
+        private readonly Neo4jCustomTypeConverter typeConverter;
 
         public NeoContextEngine()
         {
-            cachedSettersForType = new Dictionary<Type, Dictionary<string, MethodInfo>>();
-            cachedGettersForType = new Dictionary<Type, Dictionary<string, MethodInfo>>();
+            typeConverter = new Neo4jCustomTypeConverter();
         }
 
-        private Dictionary<string, MethodInfo> GetSetProperties(Type type)
+        internal T ConvertRecordToObject<T>(IRecord record) where T : class, new()
         {
-            if (!cachedSettersForType.ContainsKey(type))
+            if (record.Values.Count > 0)
             {
-                var properties = type.GetProperties().Where(p => p.CanWrite);
-                var propertiesAndSetters = new Dictionary<string, MethodInfo>();
-                foreach (var property in properties)
-                {
-                    var setter = property.GetSetMethod();
-                    if (setter != null)
-                    {
-                        propertiesAndSetters.Add(property.Name.ToLower(), setter);
-                    }
-                }
-                cachedSettersForType.Add(type, propertiesAndSetters);
+                var objectNode = record.Values.First().Value as INode;
+                return typeConverter.ConvertPropertiesTo<T>(objectNode.Properties);
             }
-            return cachedSettersForType[type];
+            return default;
         }
 
-        private Dictionary<string,MethodInfo> GetGetProperties(Type type)
+        private string GetObjectName(KeyValuePair<string,object> recordValue)
         {
-            if (!cachedGettersForType.ContainsKey(type))
+            string objectName;
+            if (typeof(INode).IsAssignableFrom(recordValue.Value.GetType()))
             {
-                var properties = type.GetProperties().Where(p => p.CanRead && p.PropertyType.IsValueType || p.PropertyType == typeof(string));
-                var propertiesAndGetters = new Dictionary<string, MethodInfo>();
-                foreach (var property in properties)
-                {
-                    var getter = property.GetGetMethod();
-                    if (getter != null)
-                    {
-                        propertiesAndGetters.Add(property.Name, getter);
-                    }
-                }
-                cachedGettersForType.Add(type, propertiesAndGetters);
+                objectName = (recordValue.Value as INode).Labels.First();
             }
-            return cachedGettersForType[type];
+            else
+            {
+                objectName = (recordValue.Value as IRelationship).Type;
+            }
+            return objectName.ToLower();
         }
 
-        internal T ConvertNodeToSingleObject<T>(IRecord record) where T : class, new()
-        {
-            if (record.Values.Count != 1)
-            {
-                throw new NeoContextException("More than 1 variable was returned in a single row.");
-            }
-            var objectNode = record.Values.First().Value as INode;
-            return CreateTFromNode<T>(objectNode);
-        }
-
-        internal T CreateTFromNode<T>(INode node) where T : class, new()
-        {
-            T result = new T();
-            var setters = GetSetProperties(typeof(T));
-            foreach (var nodeProperty in node.Properties)
-            {
-                if (setters.ContainsKey(nodeProperty.Key.ToLower()))
-                {
-                    setters[nodeProperty.Key.ToLower()].Invoke(result, new[] { nodeProperty.Value });
-                }
-            }
-            return result;
-        }
-
-        internal TResult ConvertNodeToObjectsAndMap<TResult, TInclude>(IEnumerable<IRecord> records, Func<TResult, TInclude, TResult> mapFunc)
+        internal TResult ConvertRecordToObjects<TResult, TInclude>(IEnumerable<IRecord> records, Func<TResult, TInclude, TResult> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
         {
@@ -91,14 +51,15 @@ namespace Neo4jObjectMapper
                 TInclude include = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    string objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName.ToLower() == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName.ToLower() == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
                     else
                     {
@@ -109,7 +70,7 @@ namespace Neo4jObjectMapper
             }
             return result;
         }
-        internal TResult ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TResult> mapFunc)
+        internal TResult ConvertRecordToObjects<TResult, TInclude, TInclude2>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TResult> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
             where TInclude2 : class, new()
@@ -122,18 +83,19 @@ namespace Neo4jObjectMapper
                 TInclude2 include2 = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    var objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude2).Name.ToLower())
+                    else if (objectName == typeof(TInclude2).Name.ToLower())
                     {
-                        include2 = CreateTFromNode<TInclude2>(node);
+                        include2 = typeConverter.ConvertPropertiesTo<TInclude2>(entity.Properties);
                     }
                     else
                     {
@@ -144,7 +106,7 @@ namespace Neo4jObjectMapper
             }
             return result;
         }
-        internal TResult ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, TResult> mapFunc)
+        internal TResult ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, TResult> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
             where TInclude2 : class, new()
@@ -159,33 +121,34 @@ namespace Neo4jObjectMapper
                 TInclude3 include3 = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    var objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude2).Name.ToLower())
+                    else if (objectName == typeof(TInclude2).Name.ToLower())
                     {
-                        include2 = CreateTFromNode<TInclude2>(node);
+                        include2 = typeConverter.ConvertPropertiesTo<TInclude2>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude3).Name.ToLower())
+                    else if (objectName == typeof(TInclude3).Name.ToLower())
                     {
-                        include3 = CreateTFromNode<TInclude3>(node);
+                        include3 = typeConverter.ConvertPropertiesTo<TInclude3>(entity.Properties);
                     }
                     else
                     {
                         throw new NeoContextException("Unrecognized node inside the result of the query.");
                     }
                 }
-                result = mapFunc(res, include, include2, include3);
+                result = mapFunc(res, include, include2,include3);
             }
             return result;
         }
-        internal TResult ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3, TInclude4>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, TInclude4, TResult> mapFunc)
+        internal TResult ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, TInclude4, TResult> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
             where TInclude2 : class, new()
@@ -202,26 +165,27 @@ namespace Neo4jObjectMapper
                 TInclude4 include4 = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    var objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude2).Name.ToLower())
+                    else if (objectName == typeof(TInclude2).Name.ToLower())
                     {
-                        include2 = CreateTFromNode<TInclude2>(node);
+                        include2 = typeConverter.ConvertPropertiesTo<TInclude2>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude3).Name.ToLower())
+                    else if (objectName == typeof(TInclude3).Name.ToLower())
                     {
-                        include3 = CreateTFromNode<TInclude3>(node);
+                        include3 = typeConverter.ConvertPropertiesTo<TInclude3>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude4).Name.ToLower())
+                    else if (objectName == typeof(TInclude4).Name.ToLower())
                     {
-                        include4 = CreateTFromNode<TInclude4>(node);
+                        include4 = typeConverter.ConvertPropertiesTo<TInclude4>(entity.Properties);
                     }
                     else
                     {
@@ -233,7 +197,7 @@ namespace Neo4jObjectMapper
             return result;
         }
 
-        internal IEnumerable<TResult> ConvertNodeToObjectsAndMap<TResult, TInclude>(List<IRecord> records, Func<TResult, TInclude, IEnumerable<TResult>> mapFunc)
+        internal IEnumerable<TResult> ConvertRecordsToObjects<TResult, TInclude>(List<IRecord> records, Func<TResult, TInclude, IEnumerable<TResult>> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
         {
@@ -244,14 +208,15 @@ namespace Neo4jObjectMapper
                 TInclude include = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    string objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName.ToLower() == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName.ToLower() == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
                     else
                     {
@@ -262,7 +227,7 @@ namespace Neo4jObjectMapper
             }
             return result;
         }
-        internal IEnumerable<TResult> ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2>(List<IRecord> records, Func<TResult, TInclude, TInclude2, IEnumerable<TResult>> mapFunc)
+        internal IEnumerable<TResult> ConvertRecordsToObjects<TResult, TInclude, TInclude2>(List<IRecord> records, Func<TResult, TInclude, TInclude2, IEnumerable<TResult>> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
             where TInclude2 : class, new()
@@ -275,18 +240,19 @@ namespace Neo4jObjectMapper
                 TInclude2 include2 = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    var objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude2).Name.ToLower())
+                    else if (objectName == typeof(TInclude2).Name.ToLower())
                     {
-                        include2 = CreateTFromNode<TInclude2>(node);
+                        include2 = typeConverter.ConvertPropertiesTo<TInclude2>(entity.Properties);
                     }
                     else
                     {
@@ -297,7 +263,7 @@ namespace Neo4jObjectMapper
             }
             return result;
         }
-        internal IEnumerable<TResult> ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, IEnumerable<TResult>> mapFunc)
+        internal IEnumerable<TResult> ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, IEnumerable<TResult>> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
             where TInclude2 : class, new()
@@ -312,22 +278,23 @@ namespace Neo4jObjectMapper
                 TInclude3 include3 = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    var objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude2).Name.ToLower())
+                    else if (objectName == typeof(TInclude2).Name.ToLower())
                     {
-                        include2 = CreateTFromNode<TInclude2>(node);
+                        include2 = typeConverter.ConvertPropertiesTo<TInclude2>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude3).Name.ToLower())
+                    else if (objectName == typeof(TInclude3).Name.ToLower())
                     {
-                        include3 = CreateTFromNode<TInclude3>(node);
+                        include3 = typeConverter.ConvertPropertiesTo<TInclude3>(entity.Properties);
                     }
                     else
                     {
@@ -338,7 +305,7 @@ namespace Neo4jObjectMapper
             }
             return result;
         }
-        internal IEnumerable<TResult> ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3, TInclude4>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, TInclude4, IEnumerable<TResult>> mapFunc)
+        internal IEnumerable<TResult> ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(List<IRecord> records, Func<TResult, TInclude, TInclude2, TInclude3, TInclude4, IEnumerable<TResult>> mapFunc)
             where TResult : class, new()
             where TInclude : class, new()
             where TInclude2 : class, new()
@@ -355,26 +322,27 @@ namespace Neo4jObjectMapper
                 TInclude4 include4 = null;
                 foreach (var recordValue in record.Values)
                 {
-                    var node = recordValue.Value as INode;
-                    if (node.Labels.First().ToLower() == typeof(TResult).Name.ToLower())
+                    var objectName = GetObjectName(recordValue);
+                    var entity = recordValue.Value as IEntity;
+                    if (objectName == typeof(TResult).Name.ToLower())
                     {
-                        res = CreateTFromNode<TResult>(node);
+                        res = typeConverter.ConvertPropertiesTo<TResult>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude).Name.ToLower())
+                    else if (objectName == typeof(TInclude).Name.ToLower())
                     {
-                        include = CreateTFromNode<TInclude>(node);
+                        include = typeConverter.ConvertPropertiesTo<TInclude>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude2).Name.ToLower())
+                    else if (objectName == typeof(TInclude2).Name.ToLower())
                     {
-                        include2 = CreateTFromNode<TInclude2>(node);
+                        include2 = typeConverter.ConvertPropertiesTo<TInclude2>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude3).Name.ToLower())
+                    else if (objectName == typeof(TInclude3).Name.ToLower())
                     {
-                        include3 = CreateTFromNode<TInclude3>(node);
+                        include3 = typeConverter.ConvertPropertiesTo<TInclude3>(entity.Properties);
                     }
-                    else if (node.Labels.First().ToLower() == typeof(TInclude4).Name.ToLower())
+                    else if (objectName == typeof(TInclude4).Name.ToLower())
                     {
-                        include4 = CreateTFromNode<TInclude4>(node);
+                        include4 = typeConverter.ConvertPropertiesTo<TInclude4>(entity.Properties);
                     }
                     else
                     {
@@ -388,78 +356,87 @@ namespace Neo4jObjectMapper
 
         internal NOMDataRecord ConvertRecordToNeoRecord(IRecord record)
         {
-            Dictionary<string, IReadOnlyDictionary<string, object>> nodes = new Dictionary<string, IReadOnlyDictionary<string, object>>();
-            foreach (var node in record.Values)
+            Dictionary<string, IReadOnlyDictionary<string, object>> resultObjects = new Dictionary<string, IReadOnlyDictionary<string, object>>();
+            foreach (var resultObject in record.Values)
             {
-                INode values = node.Value as INode;
-                nodes.Add(node.Key, values.Properties);
+                IEntity values = resultObject.Value as IEntity;
+                resultObjects.Add(resultObject.Key, values.Properties);
             }
-            return new NOMDataRecord(nodes);
+            return new NOMDataRecord(resultObjects);
         }
 
-        internal Query CreateInsertQuery<TNode>(TNode entity)
+        internal Query CreateInsertNodeQuery<TNode>(TNode entity)
         {
-            var properties = GetGetProperties(typeof(TNode));
-            var query = BuildNodeQuery<TNode>(properties.Keys.ToArray());
-            return new Query(query,BuildParameters(properties,entity));
+            var properties = typeConverter.GetGetProperties<TNode>();
+            var query = BuildNodeQuery<TNode>(properties.ToArray());
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            foreach (var parameter in BuildParameters<TNode>(entity))
+            {
+                parameters.Add(parameter.Key,parameter.Value);
+            }
+            return new Query(query, parameters);
         }
-        internal Query CreateInsertQuery<TNode>(IEnumerable<TNode> entities)
+        internal Query CreateInsertNodesQuery<TNode>(IEnumerable<TNode> entities)
         {
             var queryStringBuilder = new StringBuilder();
-            var properties = GetGetProperties(typeof(TNode));
-            var propertyArray = properties.Keys.ToArray();
+            var properties = typeConverter.GetGetProperties<TNode>();
+            var propertyArray = properties.ToArray();
             var entityArray = entities.ToArray();
             List<KeyValuePair<string, object>> parameterList = new List<KeyValuePair<string, object>>();
             for (int i = 0; i < entityArray.Length; i++)
             {
                 queryStringBuilder.AppendLine(BuildNodeQuery<TNode>(propertyArray, $"entity{i}"));
-                parameterList.AddRange(BuildParameters(properties, entityArray[i], $"entity{i}"));
+                parameterList.AddRange(BuildParameters(entityArray[i], $"entity{i}"));
             }
             var parameterDic = new Dictionary<string, object>();
             foreach (var kv in parameterList)
             {
                 parameterDic.Add(kv.Key, kv.Value);
             }
-            return new Query(queryStringBuilder.ToString(), new Dictionary<string,object>(parameterDic));
+            return new Query(queryStringBuilder.ToString(), new Dictionary<string, object>(parameterDic));
         }
-        internal Query CreateInsertQuery<TNode, TRelation, TNode2>(TNode node, TRelation relation, TNode2 node2)
+        internal Query CreateInsertNodesWithRelationQuery<TNode, TRelation, TNode2>(TNode node, TRelation relation, TNode2 node2)
         {
             var queryBuilder = new StringBuilder();
-            var propertiesNode1 = GetGetProperties(typeof(TNode));
-            var propertiesRel1 = GetGetProperties(typeof(TRelation));
-            var propertiesNode2 = GetGetProperties(typeof(TNode2));
-            queryBuilder.AppendLine(BuildNodeQuery<TNode>(propertiesNode1.Keys.ToArray(), "node1prop", "node1"));
-            queryBuilder.AppendLine(BuildNodeQuery<TNode2>(propertiesNode2.Keys.ToArray(), "node2prop", "node2"));
-            queryBuilder.AppendLine(BuildRelationQuery<TRelation>(propertiesRel1.Keys.ToArray(), "node1", "node2","relProp"));
+            var propertiesNode1 = typeConverter.GetGetProperties<TNode>();
+            var propertiesRel1 = typeConverter.GetGetProperties<TRelation>();
+            var propertiesNode2 = typeConverter.GetGetProperties<TNode2>();
+            queryBuilder.AppendLine(BuildNodeQuery<TNode>(propertiesNode1.ToArray(), "node1prop", "node1"));
+            queryBuilder.AppendLine(BuildNodeQuery<TNode2>(propertiesNode2.ToArray(), "node2prop", "node2"));
+            queryBuilder.AppendLine(BuildRelationQuery<TRelation>(propertiesRel1.ToArray(), "node1", "node2", "relProp"));
             List<KeyValuePair<string, object>> parameterList = new List<KeyValuePair<string, object>>();
-            parameterList.AddRange(BuildParameters(propertiesNode1, node, "node1prop"));
-            parameterList.AddRange(BuildParameters(propertiesNode2, node2, "node2prop"));
-            parameterList.AddRange(BuildParameters(propertiesRel1, relation, "relProp"));
+            parameterList.AddRange(BuildParameters(node, "node1prop"));
+            parameterList.AddRange(BuildParameters(node2, "node2prop"));
+            parameterList.AddRange(BuildParameters(relation, "relProp"));
             var parameterDic = new Dictionary<string, object>();
             foreach (var kv in parameterList)
             {
                 parameterDic.Add(kv.Key, kv.Value);
-            }            
+            }
             return new Query(queryBuilder.ToString(), new Dictionary<string, object>(parameterDic));
         }
         internal Query CreateInsertRelationQuery<TRelation>(string cypherMatchQuery, string variableNodeFrom, string variableNodeTo, TRelation relation)
         {
             var queryBuilder = new StringBuilder();
-            var properties = GetGetProperties(typeof(TRelation));
+            var properties = typeConverter.GetGetProperties<TRelation>();
             queryBuilder.AppendLine(cypherMatchQuery);
-            queryBuilder.AppendLine(BuildRelationQuery<TRelation>(properties.Keys.ToArray(),variableNodeFrom,variableNodeTo,"neo_rel_"));
-            return new Query(queryBuilder.ToString(), BuildParameters(properties, relation));
+            queryBuilder.AppendLine(BuildRelationQuery<TRelation>(properties.ToArray(), variableNodeFrom, variableNodeTo, "neo_rel_"));
+            return new Query(queryBuilder.ToString(), BuildParameters(relation, "neo_rel_"));
         }
-        internal Dictionary<string,object> BuildParameters(IDictionary<string,MethodInfo> properties,object entityObject, string propertyPrefix = "")
+
+        internal T CreateTFromEntity<T>(IEntity entities) where T : class, new()
         {
-            var result = new Dictionary<string, object>();
-            foreach (var property in properties)
-            {
-                result.Add(propertyPrefix + property.Key, property.Value.Invoke(entityObject, null));
-            }
-            return result;
+            return typeConverter.ConvertPropertiesTo<T>(entities.Properties);
         }
-        internal string BuildRelationQuery<TRelation>(string[] properties, string nodeBase, string nodeTo ,  string propertyPrefix = "" ,string nodeName = "")
+
+        internal IEnumerable<KeyValuePair<string, object>> BuildParameters<T>(T obj, string propertyPrefix = "")
+        {
+            foreach (var property in typeConverter.GenerateParametersWithValuesFromT<T>(obj))
+            {
+                yield return new KeyValuePair<string,object>(propertyPrefix + property.Key, property.Value);
+            }
+        }
+        internal string BuildRelationQuery<TRelation>(string[] properties, string nodeBase, string nodeTo, string propertyPrefix = "", string nodeName = "")
         {
             var builder = new StringBuilder();
             builder.Append($"CREATE({nodeBase})-[");
@@ -488,7 +465,7 @@ namespace Neo4jObjectMapper
             builder.Append("{");
             for (int i = 0; i < properties.Length; i++)
             {
-                if(i == properties.Length - 1)
+                if (i == properties.Length - 1)
                 {
                     builder.Append($"{properties[i]}:${propertyPrefix}{properties[i]}");
                 }

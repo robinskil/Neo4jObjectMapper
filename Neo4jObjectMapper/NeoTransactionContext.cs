@@ -14,7 +14,14 @@ namespace Neo4jObjectMapper
         {
             this.transaction = transaction;
         }
-
+        protected override async Task ExecuteRawQuery(string cypherQuery)
+        {
+            await transaction.RunAsync(cypherQuery);
+        }
+        protected override async Task ExecuteRawQuery(string cypherQuery, IDictionary<string, object> parameters)
+        {
+            await transaction.RunAsync(cypherQuery,parameters);
+        }
         protected override async Task<List<IRecord>> GetRecords(string cypherQuery)
         {
             var result = await transaction.RunAsync(cypherQuery);

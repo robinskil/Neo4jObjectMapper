@@ -91,6 +91,44 @@ namespace NeoObjectMapperTests
         }
 
         [Fact]
+        public async void TestInsertNodesWithRelation()
+        {
+            var person = new Person()
+            {
+                Age = 50,
+                DateOfBirth = DateTime.Now.AddYears(-50),
+                Id = Guid.NewGuid(),
+                Name = "neo",
+                Salary = 5400.77,
+                Owns = new List<Owns>()
+                {
+                    new Owns()
+                    {
+                        OwnedFrom = DateTime.Now.AddYears(-2),
+                        OwnedTill = DateTime.Now.AddYears(-1),
+                        House = new House()
+                        {
+                            Address = "test address",
+                            Age = 150
+                        }
+                    }
+                }
+            };
+            var context = new NeoContext(Driver);
+            var resultExecuting = await context.InsertNodeWithRelation<Person, Owns, House>(person, person.Owns.First(), person.Owns.First().House);
+            var resultPerson = await context.QueryDefaultIncludeable<Person, Owns, House>("MATCH (p:Person { Name: 'neo' })-[o:Owns]->(h:House) return p,o,h",
+                (p,o,h) => {
+                    p.Owns = new List<Owns>() { o };
+                    o.House = h;
+                    return p;
+                }
+            );
+            await context.ExecuteQuery("MATCH (n:Person { Name: 'neo' }) DETACH DELETE n");
+            await context.ExecuteQuery("MATCH (p:House {Address: 'test address'}) DETACH DELETE p");
+            Assert.Equal<Person>(person, resultPerson);
+        }
+
+        [Fact]
         public async void TestInsertRelation()
         {
             var country = new Country() { CountryID = "555", CountryName = "NOM COUNTRY" };

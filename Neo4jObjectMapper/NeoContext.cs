@@ -1,6 +1,7 @@
 ﻿using Neo4j.Driver;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Transactions;
 
@@ -11,6 +12,7 @@ namespace Neo4jObjectMapper
         public IDriver Driver { get; }
 
         private readonly NeoContextEngine engine;
+        
 
         public NeoContext(IDriver driver)
         {
@@ -29,6 +31,18 @@ namespace Neo4jObjectMapper
             try
             {
                 await session.RunAsync(cypherQuery);
+            }
+            finally
+            {
+                await session.CloseAsync();
+            }
+        }
+        protected virtual async Task ExecuteRawQuery(string cypherQuery, IDictionary<string, object> parameters)
+        {
+            var session = Driver.AsyncSession();
+            try
+            {
+                await session.RunAsync(cypherQuery,parameters);
             }
             finally
             {
@@ -152,6 +166,10 @@ namespace Neo4jObjectMapper
         {
             await ExecuteRawQuery(cypherQuery);
         }
+        public async Task ExecuteQuery(string cypherQuery, Dictionary<string, object> parameters)
+        {
+            await ExecuteRawQuery(cypherQuery, parameters);
+        }
         #endregion
         #region Querying
         public async Task<TResult> QueryDefault<TResult>(string cypherQuery) where TResult : class, new()
@@ -160,7 +178,7 @@ namespace Neo4jObjectMapper
             IRecord record = await GetRecord(cypherQuery);
             if (record != null)
             {
-                resultVal = engine.ConvertNodeToSingleObject<TResult>(record);
+                resultVal = engine.ConvertRecordToObject<TResult>(record);
             }
             return resultVal;
         }
@@ -170,7 +188,7 @@ namespace Neo4jObjectMapper
             IRecord record = await GetRecord(cypherQuery,parameters);
             if (record != null)
             {
-                resultVal = engine.ConvertNodeToSingleObject<TResult>(record);
+                resultVal = engine.ConvertRecordToObject<TResult>(record);
             }
             return resultVal;
         }
@@ -183,7 +201,7 @@ namespace Neo4jObjectMapper
             {
                 foreach (var record in records)
                 {
-                    resultList.Add(engine.ConvertNodeToSingleObject<TResult>(record));
+                    resultList.Add(engine.ConvertRecordToObject<TResult>(record));
                 }
             }
             return resultList;
@@ -196,7 +214,7 @@ namespace Neo4jObjectMapper
             {
                 foreach (var record in records)
                 {
-                    resultList.Add(engine.ConvertNodeToSingleObject<TResult>(record));
+                    resultList.Add(engine.ConvertRecordToObject<TResult>(record));
                 }
             }
             return resultList;
@@ -208,7 +226,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude>(records, mapFunc);
             }
             return resultObj;
         }
@@ -221,7 +239,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
             }
             return resultObj;
         }
@@ -235,7 +253,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
             }
             return resultObj;
         }
@@ -250,7 +268,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
             }
             return resultObj;
         }
@@ -261,7 +279,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude>(records, mapFunc);
             }
             return resultObj;
         }
@@ -274,7 +292,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
             }
             return resultObj;
         }
@@ -288,7 +306,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
             }
             return resultObj;
         }
@@ -303,7 +321,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
+                resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
             }
             return resultObj;
         }
@@ -314,7 +332,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude>(records, mapFunc);
             }
             return resultObj;
         }
@@ -327,7 +345,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
             }
             return resultObj;
         }
@@ -341,7 +359,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
             }
             return resultObj;
         }
@@ -356,7 +374,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
             }
             return resultObj;
         }
@@ -367,7 +385,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude>(records, mapFunc);
             }
             return resultObj;
         }
@@ -380,7 +398,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
             }
             return resultObj;
         }
@@ -394,7 +412,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
             }
             return resultObj;
         }
@@ -409,7 +427,7 @@ namespace Neo4jObjectMapper
             List<IRecord> records = await GetRecords(cypherQuery);
             if (records != null)
             {
-                resultObj = engine.ConvertNodeToObjectsAndMap<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
+                resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
             }
             return resultObj;
         }
@@ -448,7 +466,7 @@ namespace Neo4jObjectMapper
         #region Helper methods
         public T ConvertNodeToT<T>(INode node) where T : class, new()
         {
-            return engine.CreateTFromNode<T>(node);
+            return engine.CreateTFromEntity<T>(node);
         }
         #endregion
         #region Inserting
@@ -464,17 +482,17 @@ namespace Neo4jObjectMapper
         }
         public async Task<IResultSummary> InsertNode<TNode>(TNode node)
         {
-            IResultSummary resultSummary = await RunQuery(engine.CreateInsertQuery<TNode>(node));
+            IResultSummary resultSummary = await RunQuery(engine.CreateInsertNodeQuery<TNode>(node));
             return resultSummary;
         }
         public async Task<IResultSummary> InsertNodes<TNode>(IEnumerable<TNode> node)
         {
-            IResultSummary resultSummary = await RunQuery(engine.CreateInsertQuery<TNode>(node));
+            IResultSummary resultSummary = await RunQuery(engine.CreateInsertNodesQuery<TNode>(node));
             return resultSummary;
         }
-        public async Task<IResultSummary> InsertNodeWithRelation<TNode, TRelation, TNode2>(TNode node, TRelation relation , TNode2 node2)
+        public async Task<IResultSummary> InsertNodeWithRelation<TNode, TRelation, TNode2>(TNode nodeFrom, TRelation relation , TNode2 nodeTo)
         {
-            IResultSummary resultSummary = await RunQuery(engine.CreateInsertQuery<TNode, TRelation, TNode2>(node, relation, node2));
+            IResultSummary resultSummary = await RunQuery(engine.CreateInsertNodesWithRelationQuery<TNode, TRelation, TNode2>(nodeFrom, relation, nodeTo));
             return resultSummary;
         }
         public async Task<IResultSummary> InsertRelation<TRelation>(string cypherMatchQuery, string variableNodeFrom, string variableNodeTo, TRelation relation)
