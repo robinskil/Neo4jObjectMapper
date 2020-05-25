@@ -64,7 +64,7 @@ The mapping function is very simmiliar to how it's used in Dapper.
 ```cs
 IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
 INeoContext context = new NeoContext(Driver);
-Person person = await context.QueryDefaultIncludeable<Person, Owns, House>("MATCH (p:Person { Name: 'neo' })-[o:Owns]->(h:House) return p,o,h",
+Person personResult = await context.QueryDefaultIncludeable<Person, Owns, House>("MATCH (p:Person { Name: 'neo' })-[o:Owns]->(h:House) return p,o,h",
     (person, owns, house) =>
     {
         person.Owns = new List<Owns>() { owns };
