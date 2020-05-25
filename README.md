@@ -147,3 +147,23 @@ IResultSummary resultExecuting = await context.InsertNodeWithRelation<Person, Ow
 ```
 
 ## Transactions
+The transaction context acts exactly like the INeoContext only it does everything through a transaction.
+```cs
+IDriver Driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
+INeoContext context = new NeoContext(Driver);
+Person person = new Person()
+{
+    Age = 50,
+    DateOfBirth = DateTime.Now.AddYears(-50),
+    Id = Guid.NewGuid(),
+    Name = "neo",
+    Salary = 5400.77,
+};
+//The transactionContext is capable of doing everything the INeoContext can do. 
+//Don't forget to rollback or commit the transaction at the end of the function.
+await context.UseTransaction((transactionContext) =>
+    {
+        await transactionContext.InsertNode<Person>(person);
+        await transactionContext.CommitTransaction();
+    });
+```
