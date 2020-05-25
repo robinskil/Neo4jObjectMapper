@@ -34,7 +34,7 @@ INeoContext context = new NeoContext(Driver);
 Guid personGuid = Guid.NewGuid();
 var parameters = new Dictionary<string, object>();
 parameters.Add("p1", "neo");
-//As guids aren't supported by neo4j you will have to stringify it. 
+//As guids aren't supported by neo4j you will have to stringify it when using it as a parameter. 
 //However, models can have guid properties as the library converts the string to a guid
 parameters.Add("p2", personGuid.ToString());
 Person resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name: $p1 , Id: $p2 }) RETURN p",parameters);
