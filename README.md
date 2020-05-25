@@ -1,6 +1,6 @@
 # Neo4j Object Mapper
 
-Welcome to the wiki for the Neo4j Object Mapper library. This an object mapper based on .NetStandard 2.0 .
+Welcome to the wiki for the Neo4j Object Mapper library. This an object mapper based on .NET Standard 2.0 .
 Using this library does require the developer to have some knowledge about Cypher.
 
 ## Query a single node
