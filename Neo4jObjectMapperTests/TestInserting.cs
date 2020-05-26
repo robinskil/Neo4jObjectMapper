@@ -67,7 +67,6 @@ namespace NeoObjectMapperTests
                 Name = "neo",
                 Salary = 5400.77,
             };
-            var expectedCountry = new Country() { CountryID = "555", CountryName = "NOM COUNTRY" };
             var context = new NeoContext(Driver);
             var parameters = new Dictionary<string, object>();
             parameters.Add("p1", "neo");

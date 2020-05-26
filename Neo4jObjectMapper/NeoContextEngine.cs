@@ -15,7 +15,12 @@ namespace Neo4jObjectMapper
         {
             typeConverter = new Neo4jCustomTypeConverter();
         }
-
+        /// <summary>
+        /// TODO: record.Values containing value types instead of being an Node
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="record"></param>
+        /// <returns></returns>
         internal T ConvertRecordToObject<T>(IRecord record) where T : class, new()
         {
             if (record.Values.Count > 0)
