@@ -24,19 +24,18 @@ namespace NeoObjectMapperTests
                 {
                     return false;
                 }
-                if(!((other.Owns == null && Owns == null) || (other.Owns != null && Owns != null)))
+                if(!((other.Owns == null && Owns == null) || (other.Owns != null && Owns != null && other.Owns.Count == Owns.Count)))
                 {
                     return false;
                 }
-                if(other.Owns.Count != Owns.Count)
+                if(other.Owns != null && Owns != null)
                 {
-                    return false;
-                }
-                foreach (var own in Owns)
-                {
-                    if(!other.Owns.Any(oo => own.Equals(oo)))
+                    foreach (var own in Owns)
                     {
-                        return false;
+                        if (!other.Owns.Any(oo => own.Equals(oo)))
+                        {
+                            return false;
+                        }
                     }
                 }
                 return true;

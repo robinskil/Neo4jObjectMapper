@@ -166,7 +166,7 @@ namespace Neo4jObjectMapper
         {
             await ExecuteRawQuery(cypherQuery);
         }
-        public async Task ExecuteQuery(string cypherQuery, Dictionary<string, object> parameters)
+        public async Task ExecuteQuery(string cypherQuery, IDictionary<string, object> parameters)
         {
             await ExecuteRawQuery(cypherQuery, parameters);
         }
