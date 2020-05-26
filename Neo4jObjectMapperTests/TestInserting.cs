@@ -71,8 +71,10 @@ namespace NeoObjectMapperTests
             var context = new NeoContext(Driver);
             var parameters = new Dictionary<string, object>();
             parameters.Add("p1", "neo");
-            parameters.Add("p2", personGuid.ToString());
-            var resultExecuting = await context.Insert("CREATE (:Person {  Name : $p1 , Id: $p2 })", parameters);
+            parameters.Add("p2", personGuid);
+            parameters.Add("p3", person.DateOfBirth);
+            parameters.Add("p4", person.Salary);
+            var resultExecuting = await context.Insert("CREATE (:Person {  Name : $p1 , Id: $p2, DateOfBirth: $p3 , Salary: $p4 })", parameters);
             var resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name: $p1 , Id: $p2 }) RETURN p", parameters);
             Assert.True(resultExecuting.QueryType == Neo4j.Driver.QueryType.WriteOnly);
             Assert.True(person.Id == resultPerson.Id);

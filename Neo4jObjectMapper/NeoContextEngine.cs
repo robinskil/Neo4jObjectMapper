@@ -479,6 +479,9 @@ namespace Neo4jObjectMapper
             return builder.ToString();
         }
 
-
+        internal IDictionary<string, object> ParameterConverter(IDictionary<string,object> parameters)
+        {
+            return typeConverter.ConvertParameterTypes(parameters);
+        }
     }
 }

@@ -168,6 +168,7 @@ namespace Neo4jObjectMapper
         }
         public async Task ExecuteQuery(string cypherQuery, IDictionary<string, object> parameters)
         {
+            parameters = engine.ParameterConverter(parameters);
             await ExecuteRawQuery(cypherQuery, parameters);
         }
         #endregion
@@ -185,6 +186,7 @@ namespace Neo4jObjectMapper
         public async Task<TResult> QueryDefault<TResult>(string cypherQuery, IDictionary<string, object> parameters) where TResult : class, new()
         {
             TResult resultVal = default;
+            parameters = engine.ParameterConverter(parameters);
             IRecord record = await GetRecord(cypherQuery,parameters);
             if (record != null)
             {
@@ -209,6 +211,7 @@ namespace Neo4jObjectMapper
         public async Task<IEnumerable<TResult>> QueryMultiple<TResult>(string cypherQuery, IDictionary<string, object> parameters) where TResult : class, new()
         {
             var resultList = new List<TResult>();
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -223,6 +226,7 @@ namespace Neo4jObjectMapper
         public async Task<TResult> QueryDefaultIncludeable<TResult, TInclude>(string cypherQuery, IDictionary<string, object> parameters, Func<TResult, TInclude, TResult> mapFunc) where TResult : class, new() where TInclude : class, new()
         {
             TResult resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -236,6 +240,7 @@ namespace Neo4jObjectMapper
             where TInclude2 : class, new()
         {
             TResult resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -250,6 +255,7 @@ namespace Neo4jObjectMapper
             where TInclude3 : class, new()
         {
             TResult resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -265,6 +271,7 @@ namespace Neo4jObjectMapper
             where TInclude4 : class, new()
         {
             TResult resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -329,6 +336,7 @@ namespace Neo4jObjectMapper
         public async Task<IEnumerable<TResult>> QueryMultipleIncludeable<TResult, TInclude>(string cypherQuery, IDictionary<string, object> parameters, Func<TResult, TInclude, IEnumerable<TResult>> mapFunc) where TResult : class, new() where TInclude : class, new()
         {
             IEnumerable<TResult> resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -342,6 +350,7 @@ namespace Neo4jObjectMapper
             where TInclude2 : class, new()
         {
             IEnumerable<TResult> resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -356,6 +365,7 @@ namespace Neo4jObjectMapper
             where TInclude3 : class, new()
         {
             IEnumerable<TResult> resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -371,6 +381,7 @@ namespace Neo4jObjectMapper
             where TInclude4 : class, new()
         {
             IEnumerable<TResult> resultObj = default;
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery, parameters);
             if (records != null)
             {
@@ -439,6 +450,7 @@ namespace Neo4jObjectMapper
         }
         public async Task<IEnumerable<IRecord>> GetRecordsAsync(string cypherQuery, IDictionary<string, object> parameters)
         {
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery,parameters);
             return records;
         }
@@ -455,6 +467,7 @@ namespace Neo4jObjectMapper
         public async Task<IEnumerable<NOMDataRecord>> GetNeoDataRecordsAsync(string cypherQuery, IDictionary<string, object> parameters)
         {
             List<NOMDataRecord> neoDataRecords = new List<NOMDataRecord>();
+            parameters = engine.ParameterConverter(parameters);
             List<IRecord> records = await GetRecords(cypherQuery,parameters);
             foreach (var record in records)
             {
@@ -477,6 +490,7 @@ namespace Neo4jObjectMapper
         }
         public async Task<IResultSummary> Insert(string cypherQuery,IDictionary<string,object> parameters)
         {
+            parameters = engine.ParameterConverter(parameters);
             IResultSummary resultSummary = await RunQuery(cypherQuery, parameters);
             return resultSummary;
         }
