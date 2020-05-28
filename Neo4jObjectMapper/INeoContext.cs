@@ -6,6 +6,7 @@ namespace Neo4jObjectMapper
 {
     public interface INeoContext : IQueryContext, IInsertContext, IHelperContext , IExecuteContext
     {
+        IDriver Driver { get; }
         Task UseTransaction(Action<ITransactionContext> transactionBody);
         Task ReadTransaction(Action<IAsyncTransaction> transactionFunctionBlock);
         Task InsertWithWriteTransaction(Action<IAsyncTransaction> transactionFunctionBlock);
