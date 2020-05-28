@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using System.Transactions;
+using System.Xml.Linq;
 
 namespace Neo4jObjectMapper
 {
@@ -12,50 +14,51 @@ namespace Neo4jObjectMapper
         public IDriver Driver { get; }
 
         private readonly NeoContextEngine engine;
-        
+        protected readonly Action<SessionConfigBuilder> sessionBuilder;
 
         public NeoContext(IDriver driver)
         {
             this.Driver = driver;
             engine = new NeoContextEngine();
         }
+
+        public NeoContext(IDriver driver, Action<SessionConfigBuilder> sessionBuilder)
+        {
+            Driver = driver;
+            this.sessionBuilder = sessionBuilder;
+        }
+
         protected NeoContext(IDriver driver ,NeoContextEngine executingEngine)
         {
             Driver = driver;
             engine = executingEngine;
         }
+
+        private IAsyncSession StartSession()
+        {
+            return sessionBuilder != null ? Driver.AsyncSession(sessionBuilder) : Driver.AsyncSession();
+        }
+
         #region Executers
-        protected virtual async Task ExecuteRawQuery(string cypherQuery)
+        protected virtual async Task ExecuteRawQuery(Query query)
         {
-            var session = Driver.AsyncSession();
+            var session = StartSession();
             try
             {
-                await session.RunAsync(cypherQuery);
+                await session.RunAsync(query);
             }
             finally
             {
                 await session.CloseAsync();
             }
         }
-        protected virtual async Task ExecuteRawQuery(string cypherQuery, IDictionary<string, object> parameters)
+        protected virtual async Task<List<IRecord>> GetRecords(Query query)
         {
-            var session = Driver.AsyncSession();
-            try
-            {
-                await session.RunAsync(cypherQuery,parameters);
-            }
-            finally
-            {
-                await session.CloseAsync();
-            }
-        }
-        protected virtual async Task<List<IRecord>> GetRecords(string cypherQuery, IDictionary<string, object> parameters)
-        {
-            var session = Driver.AsyncSession();
+            var session = StartSession();
             List<IRecord> records;
             try
             {
-                var result = await session.RunAsync(cypherQuery, parameters);
+                var result = await session.RunAsync(query);
                 records = await result.ToListAsync();
             }
             finally
@@ -64,46 +67,13 @@ namespace Neo4jObjectMapper
             }
             return records;
         }
-        protected virtual async Task<List<IRecord>> GetRecords(string cypherQuery)
+        protected virtual async Task<IRecord> GetRecord(Query query)
         {
-            var session = Driver.AsyncSession();
-            List<IRecord> records;
-            try
-            {
-                var result = await session.RunAsync(cypherQuery);
-                records = await result.ToListAsync();
-            }
-            finally
-            {
-                await session.CloseAsync();
-            }
-            return records;
-        }
-        protected virtual async Task<IRecord> GetRecord(string cypherQuery)
-        {
-            var session = Driver.AsyncSession();
+            var session = StartSession();
             IRecord record = null;
             try
             {
-                var result = await session.RunAsync(cypherQuery);
-                if (await result.FetchAsync())
-                {
-                    record = result.Current;
-                }
-            }
-            finally
-            {
-                await session.CloseAsync();
-            }
-            return record;
-        }
-        protected virtual async Task<IRecord> GetRecord(string cypherQuery, IDictionary<string, object> parameters)
-        {
-            var session = Driver.AsyncSession();
-            IRecord record = null;
-            try
-            {
-                var result = await session.RunAsync(cypherQuery, parameters);
+                var result = await session.RunAsync(query);
                 if (await result.FetchAsync())
                 {
                     record = result.Current;
@@ -118,40 +88,10 @@ namespace Neo4jObjectMapper
         protected virtual async Task<IResultSummary> RunQuery(Query query)
         {
             IResultSummary resultSummary;
-            var session = Driver.AsyncSession();
+            var session = StartSession();
             try
             {
                 var cursor = await session.RunAsync(query);
-                resultSummary = await cursor.ConsumeAsync();
-            }
-            finally
-            {
-                await session.CloseAsync();
-            }
-            return resultSummary;
-        }
-        protected virtual async Task<IResultSummary> RunQuery(string cypherQuery)
-        {
-            IResultSummary resultSummary;
-            var session = Driver.AsyncSession();
-            try
-            {
-                var cursor = await session.RunAsync(cypherQuery);
-                resultSummary = await cursor.ConsumeAsync();
-            }
-            finally
-            {
-                await session.CloseAsync();
-            }
-            return resultSummary;
-        }
-        protected virtual async Task<IResultSummary> RunQuery(string cypherQuery, IDictionary<string, object> parameters)
-        {
-            IResultSummary resultSummary;
-            var session = Driver.AsyncSession();
-            try
-            {
-                var cursor = await session.RunAsync(cypherQuery, parameters);
                 resultSummary = await cursor.ConsumeAsync();
             }
             finally
@@ -164,19 +104,19 @@ namespace Neo4jObjectMapper
         #region RawQueryExecuting
         public async Task ExecuteQuery(string cypherQuery)
         {
-            await ExecuteRawQuery(cypherQuery);
+            await ExecuteRawQuery(new Query(cypherQuery));
         }
         public async Task ExecuteQuery(string cypherQuery, IDictionary<string, object> parameters)
         {
             parameters = engine.ParameterConverter(parameters);
-            await ExecuteRawQuery(cypherQuery, parameters);
+            await ExecuteRawQuery(new Query(cypherQuery,parameters));
         }
         #endregion
         #region Querying
         public async Task<TResult> QueryDefault<TResult>(string cypherQuery) where TResult : class, new()
         {
             TResult resultVal = default;
-            IRecord record = await GetRecord(cypherQuery);
+            IRecord record = await GetRecord(new Query(cypherQuery));
             if (record != null)
             {
                 resultVal = engine.ConvertRecordToObject<TResult>(record);
@@ -187,7 +127,7 @@ namespace Neo4jObjectMapper
         {
             TResult resultVal = default;
             parameters = engine.ParameterConverter(parameters);
-            IRecord record = await GetRecord(cypherQuery,parameters);
+            IRecord record = await GetRecord(new Query(cypherQuery,parameters));
             if (record != null)
             {
                 resultVal = engine.ConvertRecordToObject<TResult>(record);
@@ -198,7 +138,7 @@ namespace Neo4jObjectMapper
         public async Task<IEnumerable<TResult>> QueryMultiple<TResult>(string cypherQuery) where TResult : class, new()
         {
             var resultList = new List<TResult>();
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 foreach (var record in records)
@@ -212,7 +152,7 @@ namespace Neo4jObjectMapper
         {
             var resultList = new List<TResult>();
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery,parameters));
             if (records != null)
             {
                 foreach (var record in records)
@@ -227,7 +167,7 @@ namespace Neo4jObjectMapper
         {
             TResult resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery,parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude>(records, mapFunc);
@@ -241,7 +181,7 @@ namespace Neo4jObjectMapper
         {
             TResult resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
@@ -256,7 +196,7 @@ namespace Neo4jObjectMapper
         {
             TResult resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
@@ -272,7 +212,7 @@ namespace Neo4jObjectMapper
         {
             TResult resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
@@ -283,7 +223,7 @@ namespace Neo4jObjectMapper
         public async Task<TResult> QueryDefaultIncludeable<TResult, TInclude>(string cypherQuery, Func<TResult, TInclude, TResult> mapFunc) where TResult : class, new() where TInclude : class, new()
         {
             TResult resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude>(records, mapFunc);
@@ -296,7 +236,7 @@ namespace Neo4jObjectMapper
             where TInclude2 : class, new()
         {
             TResult resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
@@ -310,7 +250,7 @@ namespace Neo4jObjectMapper
             where TInclude3 : class, new()
         {
             TResult resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
@@ -325,7 +265,7 @@ namespace Neo4jObjectMapper
             where TInclude4 : class, new()
         {
             TResult resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
@@ -337,7 +277,7 @@ namespace Neo4jObjectMapper
         {
             IEnumerable<TResult> resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude>(records, mapFunc);
@@ -351,7 +291,7 @@ namespace Neo4jObjectMapper
         {
             IEnumerable<TResult> resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
@@ -366,7 +306,7 @@ namespace Neo4jObjectMapper
         {
             IEnumerable<TResult> resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
@@ -382,7 +322,7 @@ namespace Neo4jObjectMapper
         {
             IEnumerable<TResult> resultObj = default;
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery, parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
@@ -393,7 +333,7 @@ namespace Neo4jObjectMapper
         public async Task<IEnumerable<TResult>> QueryMultipleIncludeable<TResult, TInclude>(string cypherQuery, Func<TResult, TInclude, IEnumerable<TResult>> mapFunc) where TResult : class, new() where TInclude : class, new()
         {
             IEnumerable<TResult> resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude>(records, mapFunc);
@@ -406,7 +346,7 @@ namespace Neo4jObjectMapper
             where TInclude2 : class, new()
         {
             IEnumerable<TResult> resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2>(records, mapFunc);
@@ -420,7 +360,7 @@ namespace Neo4jObjectMapper
             where TInclude3 : class, new()
         {
             IEnumerable<TResult> resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3>(records, mapFunc);
@@ -435,7 +375,7 @@ namespace Neo4jObjectMapper
             where TInclude4 : class, new()
         {
             IEnumerable<TResult> resultObj = default;
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             if (records != null)
             {
                 resultObj = engine.ConvertRecordsToObjects<TResult, TInclude, TInclude2, TInclude3, TInclude4>(records, mapFunc);
@@ -445,19 +385,19 @@ namespace Neo4jObjectMapper
         
         public async Task<IEnumerable<IRecord>> GetRecordsAsync(string cypherQuery)
         {
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             return records;
         }
         public async Task<IEnumerable<IRecord>> GetRecordsAsync(string cypherQuery, IDictionary<string, object> parameters)
         {
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery,parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             return records;
         }
         public async Task<IEnumerable<NOMDataRecord>> GetNeoDataRecordsAsync(string cypherQuery)
         {
             List<NOMDataRecord> neoDataRecords = new List<NOMDataRecord>();
-            List<IRecord> records = await GetRecords(cypherQuery);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery));
             foreach (var record in records)
             {
                 neoDataRecords.Add(engine.ConvertRecordToNeoRecord(record));
@@ -468,7 +408,7 @@ namespace Neo4jObjectMapper
         {
             List<NOMDataRecord> neoDataRecords = new List<NOMDataRecord>();
             parameters = engine.ParameterConverter(parameters);
-            List<IRecord> records = await GetRecords(cypherQuery,parameters);
+            List<IRecord> records = await GetRecords(new Query(cypherQuery, parameters));
             foreach (var record in records)
             {
                 neoDataRecords.Add(engine.ConvertRecordToNeoRecord(record));
@@ -482,16 +422,24 @@ namespace Neo4jObjectMapper
             return engine.CreateTFromEntity<T>(node);
         }
         #endregion
+        #region Updating
+        public async Task<IResultSummary> Update<T>(string matchQuery, IDictionary<string,object> parameters,string matchQueryResultVariable,T obj)
+            where T : class, new()
+        {
+            IResultSummary resultSummary = await RunQuery(engine.CreateSetNodeQuery<T>(matchQuery,parameters,matchQueryResultVariable, obj));
+            return resultSummary;
+        }
+        #endregion
         #region Inserting
         public async Task<IResultSummary> Insert(string cypherQuery)
         {
-            IResultSummary resultSummary = await RunQuery(cypherQuery);
+            IResultSummary resultSummary = await RunQuery(new Query(cypherQuery));
             return resultSummary;
         }
         public async Task<IResultSummary> Insert(string cypherQuery,IDictionary<string,object> parameters)
         {
             parameters = engine.ParameterConverter(parameters);
-            IResultSummary resultSummary = await RunQuery(cypherQuery, parameters);
+            IResultSummary resultSummary = await RunQuery(new Query(cypherQuery, parameters));
             return resultSummary;
         }
         public async Task<IResultSummary> InsertNode<TNode>(TNode node)
@@ -518,7 +466,7 @@ namespace Neo4jObjectMapper
         #region Transactions
         public async Task InsertWithWriteTransaction(Action<IAsyncTransaction> transactionFunctionBlock)
         {
-            var session = Driver.AsyncSession();
+            var session = StartSession();
             try
             {
                 await session.WriteTransactionAsync((tx) =>
@@ -535,7 +483,7 @@ namespace Neo4jObjectMapper
         }
         public async Task ReadTransaction(Action<IAsyncTransaction> transactionFunctionBlock)
         {
-            var session = Driver.AsyncSession();
+            var session = StartSession();
             try
             {
                 await session.ReadTransactionAsync((tx) =>
@@ -552,7 +500,7 @@ namespace Neo4jObjectMapper
         }
         public async Task UseTransaction(Action<ITransactionContext> transactionBody)
         {
-            var session = Driver.AsyncSession();
+            var session = StartSession();
             try
             {
                 var transaction = await session.BeginTransactionAsync();

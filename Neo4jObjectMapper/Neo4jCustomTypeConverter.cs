@@ -32,7 +32,7 @@ namespace Neo4jObjectMapper
             return cachedPropertiesForType[typeof(T)].Keys;
         }
 
-        internal IEnumerable<KeyValuePair<string,object>> GenerateParametersWithValuesFromT<T>(T obj)
+        internal IEnumerable<KeyValuePair<string,object>> GenerateParametersWithValuesFromT<T>(T obj , string propertyPrefix = "")
         {
             if (!cachedPropertiesForType.ContainsKey(typeof(T)))
             {
@@ -51,7 +51,7 @@ namespace Neo4jObjectMapper
                 {
                     val = kv.Value.Invoke(obj, null);
                 }
-                yield return new KeyValuePair<string, object>(kv.Key,val);
+                yield return new KeyValuePair<string, object>(propertyPrefix+kv.Key,val);
             }
         }
 
