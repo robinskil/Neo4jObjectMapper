@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.ComponentModel;
+using System.Collections.Concurrent;
 
 namespace Neo4jObjectMapper
 {
@@ -14,18 +15,12 @@ namespace Neo4jObjectMapper
     internal class Neo4jCustomTypeConverter
     {
         private delegate T ConvertTo<T>(IReadOnlyDictionary<string, object> neo4jProperties);
-        private readonly Dictionary<Type, Dictionary<string, MethodInfo>> cachedPropertiesForType;
-        private readonly Dictionary<Type, Delegate> cachedConverters;
+        private readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> cachedPropertiesForType;
+        private readonly ConcurrentDictionary<Type, Delegate> cachedConverters;
         internal Neo4jCustomTypeConverter()
         {
-            cachedConverters = new Dictionary<Type, Delegate>();
-            cachedPropertiesForType = new Dictionary<Type, Dictionary<string, MethodInfo>>();
-        }
-
-        internal void TestConv()
-        {
-            long x = 5;
-            int y = (int)x;
+            cachedConverters = new ConcurrentDictionary<Type, Delegate>();
+            cachedPropertiesForType = new ConcurrentDictionary<Type, Dictionary<string, MethodInfo>>();
         }
 
         internal IEnumerable<string> GetGetProperties<T>()
@@ -37,16 +32,7 @@ namespace Neo4jObjectMapper
             return cachedPropertiesForType[typeof(T)].Keys;
         }
 
-        private void AddGetPropertiesToCache<T>()
-        {
-            cachedPropertiesForType.Add(typeof(T), new Dictionary<string, MethodInfo>());
-            foreach (var property in typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public).Where(p => p.CanRead && (p.PropertyType.IsValueType || p.PropertyType == typeof(string))))
-            {
-                cachedPropertiesForType[typeof(T)].Add(property.Name, property.GetMethod);
-            }
-        }
-
-        internal IEnumerable<KeyValuePair<string,object>> GenerateParametersWithValuesFromT<T>(T obj)
+        internal IEnumerable<KeyValuePair<string,object>> GenerateParametersWithValuesFromT<T>(T obj , string propertyPrefix = "")
         {
             if (!cachedPropertiesForType.ContainsKey(typeof(T)))
             {
@@ -65,8 +51,26 @@ namespace Neo4jObjectMapper
                 {
                     val = kv.Value.Invoke(obj, null);
                 }
-                yield return new KeyValuePair<string, object>(kv.Key,val);
+                yield return new KeyValuePair<string, object>(propertyPrefix+kv.Key,val);
             }
+        }
+
+        internal IDictionary<string, object> ConvertParameterTypes(IDictionary<string,object> parameters)
+        {
+            var dicConvertParameters = new Dictionary<string, object>();
+            foreach (var kv in parameters)
+            {
+                if(kv.Value.GetType() == typeof(Guid))
+                {
+                    Guid guid = (Guid)kv.Value;
+                    dicConvertParameters.Add(kv.Key, guid.ToString());
+                }
+                else
+                {
+                    dicConvertParameters.Add(kv.Key,kv.Value);
+                }
+            }
+            return dicConvertParameters;
         }
 
         internal T ConvertPropertiesTo<T>(IReadOnlyDictionary<string, object> properties)
@@ -184,12 +188,20 @@ namespace Neo4jObjectMapper
                 il.Emit(OpCodes.Ldloc_0);
                 // Return
                 il.Emit(OpCodes.Ret);
-                cachedConverters.Add(typeof(T), dm.CreateDelegate(typeof(ConvertTo<T>)));
+                cachedConverters.AddOrUpdate(typeof(T), dm.CreateDelegate(typeof(ConvertTo<T>)), (t,d) => d);
             }
             ConvertTo<T> virtualConvertCall = (ConvertTo<T>)cachedConverters[typeof(T)];
             return virtualConvertCall(properties);
         }
-
+        private void AddGetPropertiesToCache<T>()
+        {
+            var propDic = new Dictionary<string, MethodInfo>();
+            foreach (var property in typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public).Where(p => p.CanRead && (p.PropertyType.IsValueType || p.PropertyType == typeof(string))))
+            {
+                propDic.Add(property.Name, property.GetMethod);
+            }
+            cachedPropertiesForType.AddOrUpdate(typeof(T), propDic, (t,current) => propDic);
+        }
         private DateTime ConvertZonedDateTime(ZonedDateTime zonedDateTime)
         {
             return zonedDateTime.ToDateTimeOffset().DateTime;

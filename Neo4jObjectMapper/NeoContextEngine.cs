@@ -1,6 +1,7 @@
 ﻿using Neo4j.Driver;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -10,23 +11,27 @@ namespace Neo4jObjectMapper
     public class NeoContextEngine
     {
         private readonly Neo4jCustomTypeConverter typeConverter;
-
         public NeoContextEngine()
         {
             typeConverter = new Neo4jCustomTypeConverter();
         }
-
+        /// <summary>
+        /// TODO: record.Values containing value types instead of being an Node
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="record"></param>
+        /// <returns></returns>
         internal T ConvertRecordToObject<T>(IRecord record) where T : class, new()
         {
             if (record.Values.Count > 0)
             {
-                var objectNode = record.Values.First().Value as INode;
+                var objectNode = record.Values.First().Value as IEntity;
                 return typeConverter.ConvertPropertiesTo<T>(objectNode.Properties);
             }
             return default;
         }
 
-        private string GetObjectName(KeyValuePair<string,object> recordValue)
+        private string GetObjectName(KeyValuePair<string, object> recordValue)
         {
             string objectName;
             if (typeof(INode).IsAssignableFrom(recordValue.Value.GetType()))
@@ -144,7 +149,7 @@ namespace Neo4jObjectMapper
                         throw new NeoContextException("Unrecognized node inside the result of the query.");
                     }
                 }
-                result = mapFunc(res, include, include2,include3);
+                result = mapFunc(res, include, include2, include3);
             }
             return result;
         }
@@ -372,7 +377,7 @@ namespace Neo4jObjectMapper
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             foreach (var parameter in BuildParameters<TNode>(entity))
             {
-                parameters.Add(parameter.Key,parameter.Value);
+                parameters.Add(parameter.Key, parameter.Value);
             }
             return new Query(query, parameters);
         }
@@ -433,7 +438,7 @@ namespace Neo4jObjectMapper
         {
             foreach (var property in typeConverter.GenerateParametersWithValuesFromT<T>(obj))
             {
-                yield return new KeyValuePair<string,object>(propertyPrefix + property.Key, property.Value);
+                yield return new KeyValuePair<string, object>(propertyPrefix + property.Key, property.Value);
             }
         }
         internal string BuildRelationQuery<TRelation>(string[] properties, string nodeBase, string nodeTo, string propertyPrefix = "", string nodeName = "")
@@ -457,6 +462,39 @@ namespace Neo4jObjectMapper
             builder.Append($"]->({nodeTo})");
             return builder.ToString();
         }
+
+        internal Query CreateSetNodeQuery<T>(string matchQuery, IDictionary<string, object> parametersGiven, string matchQueryResultVariable, T obj) where T : class, new()
+        {
+            var properties = typeConverter.GetGetProperties<T>().ToArray();
+            var builder = new StringBuilder();
+            builder.AppendLine(matchQuery);
+            builder.AppendLine(CreateSetQuery(properties, matchQueryResultVariable, "set"));
+            var parameters = typeConverter.GenerateParametersWithValuesFromT<T>(obj, "set").ToDictionary(a => a.Key, a => a.Value);
+            foreach (var paramGiven in typeConverter.ConvertParameterTypes(parametersGiven))
+            {
+                parameters.Add(paramGiven.Key,paramGiven.Value);
+            }
+            return new Query(builder.ToString(), parameters);
+        }
+
+        internal string CreateSetQuery(string[] properties, string variableMatch ,string propertyPrefix = "")
+        {
+            var builder = new StringBuilder();
+            builder.Append(" SET ");
+            for (int i = 0; i < properties.Length; i++)
+            {
+                if (i == properties.Length - 1)
+                {
+                    builder.Append($"{variableMatch}.{properties[i]} = ${propertyPrefix}{properties[i]}");
+                }
+                else
+                {
+                    builder.Append($"{variableMatch}.{properties[i]} = ${propertyPrefix}{properties[i]} , ");
+                }
+            }
+            return builder.ToString();
+        }
+
         internal string BuildNodeQuery<TNode>(string[] properties, string propertyPrefix = "", string nodeName = "")
         {
             var builder = new StringBuilder();
@@ -479,6 +517,9 @@ namespace Neo4jObjectMapper
             return builder.ToString();
         }
 
-
+        internal IDictionary<string, object> ParameterConverter(IDictionary<string,object> parameters)
+        {
+            return typeConverter.ConvertParameterTypes(parameters);
+        }
     }
 }

@@ -14,38 +14,20 @@ namespace Neo4jObjectMapper
         {
             this.transaction = transaction;
         }
-        protected override async Task ExecuteRawQuery(string cypherQuery)
+        protected override async Task ExecuteRawQuery(Query query)
         {
-            await transaction.RunAsync(cypherQuery);
+            await transaction.RunAsync(query);
         }
-        protected override async Task ExecuteRawQuery(string cypherQuery, IDictionary<string, object> parameters)
+        protected override async Task<List<IRecord>> GetRecords(Query query)
         {
-            await transaction.RunAsync(cypherQuery,parameters);
-        }
-        protected override async Task<List<IRecord>> GetRecords(string cypherQuery)
-        {
-            var result = await transaction.RunAsync(cypherQuery);
+            var result = await transaction.RunAsync(query);
             return await result.ToListAsync();
         }
-        protected override async Task<List<IRecord>> GetRecords(string cypherQuery, IDictionary<string, object> parameters)
-        {
-            var result = await transaction.RunAsync(cypherQuery, parameters);
-            return await result.ToListAsync();
-        }
-        protected override async Task<IRecord> GetRecord(string cypherQuery)
+
+        protected override async Task<IRecord> GetRecord(Query query)
         {
             IRecord record = null;
-            var result = await transaction.RunAsync(cypherQuery);
-            if (await result.FetchAsync())
-            {
-                record = result.Current;
-            }
-            return record;
-        }
-        protected override async Task<IRecord> GetRecord(string cypherQuery, IDictionary<string, object> parameters)
-        {
-            IRecord record = null;
-            var result = await transaction.RunAsync(cypherQuery, parameters);
+            var result = await transaction.RunAsync(query);
             if (await result.FetchAsync())
             {
                 record = result.Current;
@@ -57,17 +39,7 @@ namespace Neo4jObjectMapper
             var cursor = await transaction.RunAsync(query);
             return await cursor.ConsumeAsync();
         }
-        protected override async Task<IResultSummary> RunQuery(string cypherQuery)
-        {
-            var cursor = await transaction.RunAsync(cypherQuery);
-            return await cursor.ConsumeAsync();
-        }
-        protected override async Task<IResultSummary> RunQuery(string cypherQuery, IDictionary<string, object> parameters)
-        {
-            var session = Driver.AsyncSession();
-            var cursor = await session.RunAsync(cypherQuery, parameters);
-            return await cursor.ConsumeAsync();
-        }
+
 
         public async Task CommitTransaction()
         {

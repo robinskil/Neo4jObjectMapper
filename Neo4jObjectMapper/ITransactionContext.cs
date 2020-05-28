@@ -2,7 +2,7 @@
 
 namespace Neo4jObjectMapper
 {
-    public interface ITransactionContext : IQueryContext, IInsertContext, IHelperContext
+    public interface ITransactionContext : IQueryContext, IInsertContext, IHelperContext, IExecuteContext
     {
         Task CommitTransaction();
         Task RollbackTransaction();

@@ -11,29 +11,73 @@ namespace NeoObjectMapperTests
     public class TestInserting : TestEngine
     {
         [Fact]
+        public async void TestQueryMultiple()
+        {
+            var persons = new List<Person>()
+            {
+                new Person()
+                {
+                    Age = 50,
+                    DateOfBirth = DateTime.Now.AddYears(-50),
+                    Id = Guid.NewGuid(),
+                    Name = "neo",
+                    Salary = 5400.77,
+                },
+                new Person()
+                {
+                    Age = 50,
+                    DateOfBirth = DateTime.Now.AddYears(-50),
+                    Id = Guid.NewGuid(),
+                    Name = "neo",
+                    Salary = 5400.77,
+                }
+            };
+            var context = new NeoContext(Driver);
+            IResultSummary resultExecuting = await context.InsertNodes<Person>(persons);
+            IEnumerable<Person> personsResult = await context.QueryMultiple<Person>("MATCH (p:Person) return p");
+            await context.ExecuteQuery("MATCH (p:Person) DETACH DELETE p");
+        }
+        [Fact]
         public async void TestInsertQuery()
         {
-            var expectedCountry = new Country() { CountryID = "555", CountryName = "NOM COUNTRY" };
+            var person = new Person()
+            {
+                Age = 50,
+                DateOfBirth = DateTime.Now.AddYears(-50),
+                Id = Guid.NewGuid(),
+                Name = "neo",
+                Salary = 5400.77,
+            };
             var context = new NeoContext(Driver);
-            var resultExecuting = await context.Insert("CREATE (:Country { CountryID: '555' , countryName: 'NOM COUNTRY'})");
-            var resultCountry = await context.QueryDefault<Country>("MATCH (n:Country { CountryID: '555' }) RETURN n");
+            IResultSummary resultExecuting = await context.InsertNode<Person>(person);
+            var resultPerson = await context.QueryDefault<Person>("MATCH (p:Person) RETURN p");
             Assert.True(resultExecuting.QueryType == Neo4j.Driver.QueryType.WriteOnly);
-            Assert.True(IsEqual(expectedCountry, resultCountry));
-            await context.ExecuteQuery("MATCH (n:Country { CountryID: '555' }) DETACH DELETE n");
+            Assert.Equal<Person>(person, resultPerson);
+            await context.ExecuteQuery("MATCH (p:Person { Name : 'neo' }) DETACH DELETE p");
         }
         [Fact]
         public async void TestInsertQueryParameters()
         {
-            var expectedCountry = new Country() { CountryID = "555", CountryName = "NOM COUNTRY" };
-            var context = new NeoContext(Driver);
-            var resultExecuting = await context.Insert("CREATE (:Country { countryID: $p1 , countryName: 'NOM COUNTRY'})",new Dictionary<string, object>() 
+            var personGuid = Guid.NewGuid();
+            var person = new Person()
             {
-                { "p1" , "555" }
-            });
-            var resultCountry = await context.QueryDefault<Country>("MATCH (n:Country { countryID: '555' }) RETURN n");
+                Age = 50,
+                DateOfBirth = DateTime.Now.AddYears(-50),
+                Id = personGuid,
+                Name = "neo",
+                Salary = 5400.77,
+            };
+            var context = new NeoContext(Driver);
+            var parameters = new Dictionary<string, object>();
+            parameters.Add("p1", "neo");
+            parameters.Add("p2", personGuid);
+            parameters.Add("p3", person.DateOfBirth);
+            parameters.Add("p4", person.Salary);
+            var resultExecuting = await context.Insert("CREATE (:Person {  Name : $p1 , Id: $p2, DateOfBirth: $p3 , Salary: $p4 })", parameters);
+            var resultPerson = await context.QueryDefault<Person>("MATCH (p:Person { Name: $p1 , Id: $p2 }) RETURN p", parameters);
             Assert.True(resultExecuting.QueryType == Neo4j.Driver.QueryType.WriteOnly);
-            Assert.True(IsEqual(expectedCountry, resultCountry));
-            await context.ExecuteQuery("MATCH (n:Country { countryID: '555' }) DETACH DELETE n");
+            Assert.True(person.Id == resultPerson.Id);
+            await context.ExecuteQuery("MATCH (p:Person) DETACH DELETE p");
         }
         [Fact]
         public async void TestInsertQueryGeneric()
@@ -77,9 +121,10 @@ namespace NeoObjectMapperTests
                 city
             };
             var context = new NeoContext(Driver);
-            var resultExecuting = await context.InsertNodeWithRelation<City,EXISTS_IN,Country>(city,new EXISTS_IN(),country);
-            var resultCountry = await context.QueryDefaultIncludeable<Country,City>("MATCH (n:Country { CountryID: '555' })<-[e:EXISTS_IN]-(c:City) return n,c", 
-                (country,city) => {
+            var resultExecuting = await context.InsertNodeWithRelation<City, EXISTS_IN, Country>(city, new EXISTS_IN(), country);
+            var resultCountry = await context.QueryDefaultIncludeable<Country, City>("MATCH (n:Country { CountryID: '555' })<-[e:EXISTS_IN]-(c:City) return n,c",
+                (country, city) =>
+                {
                     country.Cities = new List<City>() { city };
                     return country;
                 }
@@ -114,13 +159,20 @@ namespace NeoObjectMapperTests
                     }
                 }
             };
-            var context = new NeoContext(Driver);
-            var resultExecuting = await context.InsertNodeWithRelation<Person, Owns, House>(person, person.Owns.First(), person.Owns.First().House);
+            INeoContext context = new NeoContext(Driver);
+            IResultSummary resultExecuting = await context.InsertNodeWithRelation<Person, Owns, House>(person, person.Owns.First(), person.Owns.First().House);
+            Dictionary<Guid, Person> personContainer = new Dictionary<Guid, Person>();
             var resultPerson = await context.QueryDefaultIncludeable<Person, Owns, House>("MATCH (p:Person { Name: 'neo' })-[o:Owns]->(h:House) return p,o,h",
-                (p,o,h) => {
-                    p.Owns = new List<Owns>() { o };
+                (p, o, h) =>
+                {
+                    if (!personContainer.ContainsKey(p.Id))
+                    {
+                        personContainer.Add(p.Id, p);
+                        p.Owns = new List<Owns>();
+                    }
+                    personContainer[p.Id].Owns.Add(o);
                     o.House = h;
-                    return p;
+                    return personContainer[p.Id];
                 }
             );
             await context.ExecuteQuery("MATCH (n:Person { Name: 'neo' }) DETACH DELETE n");
@@ -142,9 +194,10 @@ namespace NeoObjectMapperTests
             await context.InsertNode<City>(city);
             var resultRelEx = await context.InsertRelation<EXISTS_IN>(
                 "MATCH (n:Country { CountryID: '555' }) " +
-                "MATCH (c:City { CityId: '5555' })","c","n",new EXISTS_IN());
+                "MATCH (c:City { CityId: '5555' })", "c", "n", new EXISTS_IN());
             var resultCountry = await context.QueryDefaultIncludeable<Country, City>("MATCH (n:Country { CountryID: '555' })<-[e:EXISTS_IN]-(c:City) return n,c",
-                (country, city) => {
+                (country, city) =>
+                {
                     country.Cities = new List<City>() { city };
                     return country;
                 }

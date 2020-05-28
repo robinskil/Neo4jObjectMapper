@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
     <Title>Neo4j Object Mapper</Title>
     <PackageId>Neo4jObjectMapper</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Robin Kooyman</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Description>This is a small package which wraps the Neo4j official driver in an Object Mapper. For more information on how to use it, go to https://github.com/robinskil/Neo4jObjectMapper/wiki . This is the first release of this package. It's an open source project so feedback and improvements are always welcome. If there are any issues please contact through github.</Description>
+    <Description>This is a library which wraps the Neo4j official driver in a simplified interface with an Object Mapper. It allows developers to use POCO's to query the neo4j database. No extensive setup is needed to use this library. For more information on how to use it, go to https://github.com/robinskil/Neo4jObjectMapper . This an open source project so feedback and improvements are always welcome. If there are any issues please contact me through github.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>Release 1.0.1 with bug fixes and faster type conversion to models.</PackageReleaseNotes>
+    <PackageReleaseNotes>Release 1.0.2 with stability bug fixes.</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/robinskil/Neo4jObjectMapper</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageIcon>logo.png</PackageIcon>
