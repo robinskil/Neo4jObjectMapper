@@ -3,7 +3,7 @@
     <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
     <Title>Neo4j Object Mapper</Title>
     <PackageId>Neo4jObjectMapper</PackageId>
-    <Version>1.1.0-alpha</Version>
+    <Version>1.1.0-alpha.2</Version>
     <Authors>Robin Kooyman</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>This is a library which wraps the Neo4j official driver in a simplified interface with an Object Mapper. It allows developers to use POCO's to query the neo4j database. No extensive setup is needed to use this library. For more information on how to use it, go to https://github.com/robinskil/Neo4jObjectMapper . This an open source project so feedback and improvements are always welcome. If there are any issues please contact me through github.</Description>
