@@ -1,4 +1,5 @@
 ﻿using Neo4j.Driver;
+using Neo4jObjectMapper.Advanced;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,7 +11,7 @@ namespace Neo4jObjectMapper
     {
         private readonly IAsyncTransaction transaction;
 
-        internal NeoTransactionContext(IDriver driver, NeoContextEngine executingEngine, IAsyncTransaction transaction) : base(driver, executingEngine)
+        internal NeoTransactionContext(IDriver driver, NeoContextEngine executingEngine , Neo4jCache neo4JCache, IAsyncTransaction transaction) : base(driver, executingEngine , neo4JCache)
         {
             this.transaction = transaction;
         }

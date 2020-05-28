@@ -1,4 +1,5 @@
 using Neo4jObjectMapper;
+using Neo4jObjectMapper.Advanced;
 using System;
 using System.Collections.Generic;
 using Xunit;
@@ -16,7 +17,8 @@ namespace NeoObjectMapperTests
                 CountryName = "Russia"
             };
             INeoContext context = new NeoContext(Driver);
-            Country result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:'Russia'}) return n");
+            Country result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:'Russia'}) return n", new CacheConfig(true,TimeSpan.FromMinutes(20)));
+            Country result2 = await context.QueryDefault<Country>("MATCH(n:Country {countryName:'Russia'}) return n", new CacheConfig(true,TimeSpan.FromMinutes(20)));
             Assert.NotNull(result);
             Assert.True(IsEqual(result, expected));
         }
@@ -31,7 +33,8 @@ namespace NeoObjectMapperTests
             var context = new NeoContext(Driver);
             var parameters = new Dictionary<string, object>();
             parameters.Add("Country", "Russia");
-            var result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:$Country}) return n", parameters);
+            var result = await context.QueryDefault<Country>("MATCH(n:Country {countryName:$Country}) return n", parameters, new CacheConfig(true, TimeSpan.FromMinutes(20),true));
+            var result2 = await context.QueryDefault<Country>("MATCH(n:Country {countryName:$Country}) return n", parameters, new CacheConfig(true, TimeSpan.FromMinutes(20), true));
             Assert.NotNull(result);
             Assert.True(IsEqual(result, expected));
         }

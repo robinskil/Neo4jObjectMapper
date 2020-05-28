@@ -5,17 +5,30 @@ using System.Text;
 
 namespace Neo4jObjectMapper.Advanced
 {
-    public class QueryEquality : IEqualityComparer<Query>
+    public class Neo4jQueryTextEquality : IEqualityComparer<Neo4jQuery>
     {
-        public bool Equals(Query x, Query y)
+        public bool Equals(Neo4jQuery x, Neo4jQuery y)
         {
-            if(x != null && y != null && x.Text == y.Text && x.Parameters.Count == y.Parameters.Count)
+            if(x != null && y != null && x.Text == y.Text)
             {
-                if(x.Parameters == null && y.Parameters == null)
-                {
-                    return true;
-                }
-                else if(x.Parameters != null && y.Parameters != null)
+                return true;
+            }
+            return false;
+        }
+
+        public int GetHashCode(Neo4jQuery obj)
+        {
+            return obj.Text.GetHashCode();
+        }
+    }
+
+    public class Neo4jQueryTextAndParameterEquality : IEqualityComparer<Neo4jQuery>
+    {
+        public bool Equals(Neo4jQuery x, Neo4jQuery y)
+        {
+            if (x != null && y != null && x.Text == y.Text)
+            {
+                if (x.Parameters != null && y.Parameters != null && x.Parameters.Count == y.Parameters.Count)
                 {
                     foreach (var parameter in x.Parameters)
                     {
@@ -30,14 +43,19 @@ namespace Neo4jObjectMapper.Advanced
                     }
                     return true;
                 }
-                return false;
             }
             return false;
         }
 
-        public int GetHashCode(Query obj)
+        public int GetHashCode(Neo4jQuery obj)
         {
-            return obj.GetHashCode();
+            int hashCode = obj.Text.GetHashCode();
+            foreach (var parameter in obj.Parameters)
+            {
+                hashCode = hashCode ^ parameter.Key.GetHashCode();
+                hashCode = hashCode ^ parameter.Value.GetHashCode();
+            }
+            return hashCode;
         }
     }
 }
