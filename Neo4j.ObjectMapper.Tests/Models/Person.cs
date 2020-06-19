@@ -4,9 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
-namespace NeoObjectMapperTests
+namespace Neo4j.ObjectMapper.Tests.Models
 {
-    //Guid is not supported
     public class Person : IEquatable<Person>
     {
         public Guid Id { get; set; }
@@ -18,17 +17,17 @@ namespace NeoObjectMapperTests
 
         public bool Equals([AllowNull] Person other)
         {
-            if(other != null)
+            if (other != null)
             {
-                if(!(Id == other.Id && Age == other.Age && Name == other.Name && Salary == other.Salary && DateOfBirth == other.DateOfBirth))
+                if (!(Id == other.Id && Age == other.Age && Name == other.Name && Salary == other.Salary && DateOfBirth == other.DateOfBirth))
                 {
                     return false;
                 }
-                if(!((other.Owns == null && Owns == null) || (other.Owns != null && Owns != null && other.Owns.Count == Owns.Count)))
+                if (!((other.Owns == null && Owns == null) || (other.Owns != null && Owns != null && other.Owns.Count == Owns.Count)))
                 {
                     return false;
                 }
-                if(other.Owns != null && Owns != null)
+                if (other.Owns != null && Owns != null)
                 {
                     foreach (var own in Owns)
                     {

@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Neo4jObjectMapper\Neo4jObjectMapper.csproj" />
+    <ProjectReference Include="..\Neo4j.ObjectMapper\Neo4j.ObjectMapper.csproj" />
   </ItemGroup>
 
 </Project>

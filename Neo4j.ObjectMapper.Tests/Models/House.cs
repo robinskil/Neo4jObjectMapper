@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
-namespace NeoObjectMapperTests
+namespace Neo4j.ObjectMapper.Tests.Models
 {
     public class House : IEquatable<House>
     {
@@ -10,7 +12,7 @@ namespace NeoObjectMapperTests
 
         public bool Equals([AllowNull] House other)
         {
-            if(other == null)
+            if (other == null)
             {
                 return false;
             }

@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
-namespace NeoObjectMapperTests
+namespace Neo4j.ObjectMapper.Tests.Models
 {
     public class Owns : IEquatable<Owns>
     {
@@ -11,7 +13,7 @@ namespace NeoObjectMapperTests
 
         public bool Equals([AllowNull] Owns other)
         {
-            if(other != null)
+            if (other != null)
             {
                 return other.House.Equals(House) && other.OwnedFrom == OwnedFrom && other.OwnedTill == other.OwnedTill;
             }

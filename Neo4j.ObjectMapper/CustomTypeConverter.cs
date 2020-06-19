@@ -1,84 +1,26 @@
 ﻿using Neo4j.Driver;
 using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Reflection.Emit;
-using System.Reflection;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.ComponentModel;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Text;
 
-namespace Neo4jObjectMapper
+namespace Neo4j.ObjectMapper
 {
-
-    internal class Neo4jCustomTypeConverter
+    public static class CustomTypeConverter
     {
         private delegate T ConvertTo<T>(IReadOnlyDictionary<string, object> neo4jProperties);
-        private readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> cachedPropertiesForType;
-        private readonly ConcurrentDictionary<Type, Delegate> cachedConverters;
-        internal Neo4jCustomTypeConverter()
-        {
-            cachedConverters = new ConcurrentDictionary<Type, Delegate>();
-            cachedPropertiesForType = new ConcurrentDictionary<Type, Dictionary<string, MethodInfo>>();
-        }
+        private static readonly ConcurrentDictionary<Type, Delegate> cachedConverters = new ConcurrentDictionary<Type, Delegate>();
 
-        internal IEnumerable<string> GetGetProperties<T>()
+        private static T ConvertPropertiesTo<T>(IReadOnlyDictionary<string, object> properties)
         {
-            if (!cachedPropertiesForType.ContainsKey(typeof(T)))
+            if (!cachedConverters.ContainsKey(typeof(T)))
             {
-                AddGetPropertiesToCache<T>();
-            }
-            return cachedPropertiesForType[typeof(T)].Keys;
-        }
-
-        internal IEnumerable<KeyValuePair<string,object>> GenerateParametersWithValuesFromT<T>(T obj , string propertyPrefix = "")
-        {
-            if (!cachedPropertiesForType.ContainsKey(typeof(T)))
-            {
-                AddGetPropertiesToCache<T>();
-            }
-            foreach (var kv in cachedPropertiesForType[typeof(T)])
-            {
-                Type propType = kv.Value.ReturnType;
-                object val;
-                if(propType == typeof(Guid))
-                {
-                    Guid valHolder = (Guid)kv.Value.Invoke(obj, null);
-                    val = valHolder.ToString();
-                }
-                else
-                {
-                    val = kv.Value.Invoke(obj, null);
-                }
-                yield return new KeyValuePair<string, object>(propertyPrefix+kv.Key,val);
-            }
-        }
-
-        internal IDictionary<string, object> ConvertParameterTypes(IDictionary<string,object> parameters)
-        {
-            var dicConvertParameters = new Dictionary<string, object>();
-            foreach (var kv in parameters)
-            {
-                if(kv.Value.GetType() == typeof(Guid))
-                {
-                    Guid guid = (Guid)kv.Value;
-                    dicConvertParameters.Add(kv.Key, guid.ToString());
-                }
-                else
-                {
-                    dicConvertParameters.Add(kv.Key,kv.Value);
-                }
-            }
-            return dicConvertParameters;
-        }
-
-        internal T ConvertPropertiesTo<T>(IReadOnlyDictionary<string, object> properties)
-        {
-            if(!cachedConverters.ContainsKey(typeof(T)))
-            {
-                Type[] methodArgTypes = { typeof(IReadOnlyDictionary<string,object>) };
-                DynamicMethod dm = new DynamicMethod("Convert", typeof(T),methodArgTypes, Assembly.GetExecutingAssembly().GetType().Module);
+                Type[] methodArgTypes = { typeof(IReadOnlyDictionary<string, object>) };
+                DynamicMethod dm = new DynamicMethod("Convert", typeof(T), methodArgTypes, Assembly.GetExecutingAssembly().GetType().Module);
                 ILGenerator il = dm.GetILGenerator();
 
                 il.DeclareLocal(typeof(T));
@@ -90,7 +32,7 @@ namespace Neo4jObjectMapper
                 foreach (var property in writeableProperties)
                 {
                     var propName = property.Name;
-                    if(propertyKeysFromDic.Any(a => a.ToLower() == property.Name.ToLower()))
+                    if (propertyKeysFromDic.Any(a => a.ToLower() == property.Name.ToLower()))
                     {
                         propName = propertyKeysFromDic.FirstOrDefault(a => a.ToLower() == property.Name.ToLower());
                     }
@@ -132,11 +74,11 @@ namespace Neo4jObjectMapper
                             il.Emit(OpCodes.Callvirt, typeof(T).GetMethod("set_" + property.Name, new Type[] { property.PropertyType }));
                             break;
                         case "Guid":
-                            il.Emit(OpCodes.Call, typeof(Neo4jCustomTypeConverter).GetMethod("ConvertStringToGuid", BindingFlags.Static | BindingFlags.NonPublic));
+                            il.Emit(OpCodes.Call, typeof(CustomTypeConverter).GetMethod("ConvertStringToGuid", BindingFlags.Static | BindingFlags.NonPublic));
                             il.Emit(OpCodes.Callvirt, typeof(T).GetMethod("set_" + property.Name, new Type[] { property.PropertyType }));
                             break;
                         case "DateTime":
-                            il.Emit(OpCodes.Call, typeof(Neo4jCustomTypeConverter).GetMethod("ConvertLocalDateTime", BindingFlags.Static | BindingFlags.NonPublic));
+                            il.Emit(OpCodes.Call, typeof(CustomTypeConverter).GetMethod("ConvertLocalDateTime", BindingFlags.Static | BindingFlags.NonPublic));
                             il.Emit(OpCodes.Callvirt, typeof(T).GetMethod("set_" + property.Name, new Type[] { property.PropertyType }));
                             break;
                         case "LocalDate":
@@ -171,7 +113,7 @@ namespace Neo4jObjectMapper
                             il.Emit(OpCodes.Callvirt, typeof(T).GetMethod("set_" + property.Name, new Type[] { property.PropertyType }));
                             break;
                         case "IDictionary`2":
-                            if (!typeof(IDictionary<string,object>).IsAssignableFrom(property.PropertyType))
+                            if (!typeof(IDictionary<string, object>).IsAssignableFrom(property.PropertyType))
                             {
                                 goto default;
                             }
@@ -188,21 +130,19 @@ namespace Neo4jObjectMapper
                 il.Emit(OpCodes.Ldloc_0);
                 // Return
                 il.Emit(OpCodes.Ret);
-                cachedConverters.AddOrUpdate(typeof(T), dm.CreateDelegate(typeof(ConvertTo<T>)), (t,d) => d);
+                cachedConverters.AddOrUpdate(typeof(T), dm.CreateDelegate(typeof(ConvertTo<T>)), (t, d) => d);
             }
             ConvertTo<T> virtualConvertCall = (ConvertTo<T>)cachedConverters[typeof(T)];
             return virtualConvertCall(properties);
         }
-        private void AddGetPropertiesToCache<T>()
+
+        public static T ConvertEntityTo<T>(this IEntity entity)
+            where T : class, new()
         {
-            var propDic = new Dictionary<string, MethodInfo>();
-            foreach (var property in typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public).Where(p => p.CanRead && (p.PropertyType.IsValueType || p.PropertyType == typeof(string))))
-            {
-                propDic.Add(property.Name, property.GetMethod);
-            }
-            cachedPropertiesForType.AddOrUpdate(typeof(T), propDic, (t,current) => propDic);
+            return ConvertPropertiesTo<T>(entity.Properties);
         }
-        private DateTime ConvertZonedDateTime(ZonedDateTime zonedDateTime)
+
+        private static DateTime ConvertZonedDateTime(ZonedDateTime zonedDateTime)
         {
             return zonedDateTime.ToDateTimeOffset().DateTime;
         }
@@ -215,7 +155,7 @@ namespace Neo4jObjectMapper
             return Guid.Parse(guidString);
         }
 
-        private bool PropertyIsWriteable(PropertyInfo propertyInfo)
+        private static bool PropertyIsWriteable(PropertyInfo propertyInfo)
         {
             var readonlyAtt = Attribute.GetCustomAttribute(propertyInfo, typeof(ReadOnlyAttribute));
             return propertyInfo.CanWrite && readonlyAtt == null;

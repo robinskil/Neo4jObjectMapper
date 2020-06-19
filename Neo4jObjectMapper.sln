@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Neo4jObjectMapper", "Neo4jO
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeoObjectMapperTests", "Neo4jObjectMapperTests\NeoObjectMapperTests.csproj", "{2DCBC061-1391-4B86-9233-4D4EB8826CC7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Neo4j.ObjectMapper.Tests", "Neo4j.ObjectMapper.Tests\Neo4j.ObjectMapper.Tests.csproj", "{27E4CFC2-8ADB-4EB1-A877-C8E01A1E108A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Neo4j.ObjectMapper", "Neo4j.ObjectMapper\Neo4j.ObjectMapper.csproj", "{D31E9844-F734-4C71-A0D9-DFDD98606A8E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{2DCBC061-1391-4B86-9233-4D4EB8826CC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2DCBC061-1391-4B86-9233-4D4EB8826CC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2DCBC061-1391-4B86-9233-4D4EB8826CC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27E4CFC2-8ADB-4EB1-A877-C8E01A1E108A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27E4CFC2-8ADB-4EB1-A877-C8E01A1E108A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27E4CFC2-8ADB-4EB1-A877-C8E01A1E108A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27E4CFC2-8ADB-4EB1-A877-C8E01A1E108A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D31E9844-F734-4C71-A0D9-DFDD98606A8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D31E9844-F734-4C71-A0D9-DFDD98606A8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D31E9844-F734-4C71-A0D9-DFDD98606A8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D31E9844-F734-4C71-A0D9-DFDD98606A8E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
